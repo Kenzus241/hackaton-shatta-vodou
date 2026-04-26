@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import messagebox
 import random
+import pygame  # Nécessaire pour le son
 
 class ShattaVodouApp:
     def __init__(self, root):
@@ -8,6 +9,18 @@ class ShattaVodouApp:
         self.root.title("🃏 Shatta Vodou : Le Dé du Destin")
         self.root.geometry("500x780")
         self.root.configure(bg="#1a1a1a")
+
+        # --- Initialisation du Son ---
+        pygame.mixer.init()
+        # Note : Prépare des petits fichiers .wav ou .mp3 pour ces noms :
+        try:
+            self.son_roulette = pygame.mixer.Sound("roulette.mp3")
+            self.son_victoire = pygame.mixer.Sound("win.mp3")
+            self.son_erreur = pygame.mixer.Sound("Fail.mp3")
+            self.son_division = pygame.mixer.Sound("Slice.mp3")
+        except:
+            print("Fichiers audio non trouvés, le jeu tournera en mode muet.")
+            self.son_roulette = self.son_victoire = self.son_erreur = self.son_division = None
 
         # --- Variables de Jeu ---
         self.valeurs = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'V', 'D', 'R', 'As']
@@ -53,11 +66,14 @@ class ShattaVodouApp:
         self.btn_action = tk.Button(self.root, text="LANCER LE DÉ", font=("Helvetica", 14, "bold"), bg="#d4af37", fg="black", width=15, height=2, command=self.toggle_defilement)
         self.btn_action.pack(pady=15)
 
-        # Casino placé tout en bas
         self.casino_frame = tk.Frame(self.root, bg="#000", highlightbackground="#d4af37", highlightthickness=1)
         self.casino_frame.pack(side="bottom", pady=20, fill="x", padx=60)
         self.label_roulette = tk.Label(self.casino_frame, text="[ 🎰 | 🎰 | 🎰 ]", font=("Segoe UI Symbol", 22), bg="#000", fg="#d4af37")
         self.label_roulette.pack(pady=10)
+
+    def play_sound(self, sound):
+        if sound:
+            sound.play()
 
     def toggle_defilement(self):
         if not self.en_defilement:
@@ -75,6 +91,7 @@ class ShattaVodouApp:
 
     def animer(self):
         if self.en_defilement:
+            self.play_sound(self.son_roulette) # Son à chaque changement
             self.dernier_de = random.randint(1, len(self.paquet))
             carte_actuelle = self.paquet[self.dernier_de - 1]
             self.label_de_valeur.config(text=f"🎲 {self.dernier_de}")
@@ -96,11 +113,13 @@ class ShattaVodouApp:
             random.shuffle(self.paquet)
         else:
             if carte_tiree == self.carte_cible:
+                self.play_sound(self.son_victoire) # JACKPOT
                 self.label_roulette.config(text="[ 💎 | 💎 | 💎 ]")
                 self.root.update()
                 messagebox.showinfo("SHATTA VODOU", f"✨ {carte_tiree} ✨\nTu as gagné !\nScore final : {self.points}")
                 self.reset_jeu()
             else:
+                self.play_sound(self.son_erreur) # FAIL
                 s = random.choices(self.symboles_casino, k=3)
                 self.label_roulette.config(text=f"[ {s[0]} | {s[1]} | {s[2]} ]")
                 self.points += (2 if self.nb_divisions >= 2 else 1)
@@ -114,6 +133,7 @@ class ShattaVodouApp:
         self.label_stats.config(text=f"Cartes restantes : {len(self.paquet)}")
 
     def diviser_paquet(self, carte_perdue):
+        self.play_sound(self.son_division) # DIVISION
         self.nb_divisions += 1
         messagebox.showwarning("Paire de deux", f"{carte_perdue} n'est pas ton Shatta...\nOn divise par deux !")
         if self.carte_cible in self.paquet: self.paquet.remove(self.carte_cible)
