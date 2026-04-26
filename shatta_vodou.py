@@ -1,40 +1,59 @@
 import tkinter as tk
 from tkinter import messagebox
 import random
+import pygame
+import os
 
 # --- GESTIONNAIRE DE FENÊTRES PRINCIPAL ---
 class Application(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("🃏 Shatta Vodou : Le Dé du Destin")
-        self.geometry("900x800")
+        self.title("🃏 Shatta Vodou : Ultimate Edition")
+        self.geometry("600x850")
         self.configure(bg="#0B0C10")
         
-        # Variables globales pour les paramètres
+        # Initialisation Audio
+        pygame.mixer.init()
+        self.charger_sons()
+
+        # Variables globales
         self.son_active = tk.BooleanVar(value=True)
         self.animations_rapides = tk.BooleanVar(value=False)
 
-        # Conteneur principal qui va stocker nos écrans (Frames)
         container = tk.Frame(self, bg="#0B0C10")
         container.pack(side="top", fill="both", expand=True)
         container.grid_rowconfigure(0, weight=1)
         container.grid_columnconfigure(0, weight=1)
 
         self.frames = {}
-
-        # Initialisation de tous les écrans
         for F in (MenuPrincipal, Parametres, JeuShatta, EcranFin):
             page_name = F.__name__
             frame = F(parent=container, controller=self)
             self.frames[page_name] = frame
-            # On superpose toutes les frames au même endroit
             frame.grid(row=0, column=0, sticky="nsew")
 
-        # Afficher le menu principal au démarrage
         self.show_frame("MenuPrincipal")
 
+    def charger_sons(self):
+        try:
+            self.sons = {
+                "roulette": pygame.mixer.Sound("roulette.mp3"),
+                "victoire": pygame.mixer.Sound("win.mp3"),
+                "erreur": pygame.mixer.Sound("Fail.mp3"),
+                "division": pygame.mixer.Sound("Slice.mp3")
+            }
+            if os.path.exists("background.mp3"):
+                pygame.mixer.music.load("background.mp3")
+                pygame.mixer.music.set_volume(0.3)
+                pygame.mixer.music.play(-1)
+        except:
+            self.sons = None
+
+    def play_fx(self, key):
+        if self.son_active.get() and self.sons and key in self.sons:
+            self.sons[key].play()
+
     def show_frame(self, page_name, **kwargs):
-        """Affiche un écran spécifique et lui passe des arguments si besoin (ex: score de fin)"""
         frame = self.frames[page_name]
         if hasattr(frame, 'on_show'):
             frame.on_show(**kwargs)
@@ -44,206 +63,189 @@ class Application(tk.Tk):
 class MenuPrincipal(tk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent, bg="#0B0C10")
-        self.controller = controller
+        tk.Label(self, text="SHATTA VODOU", font=("Courier", 40, "bold"), bg="#0B0C10", fg="#D4AF37").pack(pady=(100, 10))
+        tk.Label(self, text="L'ULTIME RITUEL", font=("Helvetica", 14, "italic"), bg="#0B0C10", fg="#66FCF1").pack(pady=(0, 60))
 
-        # Titres
-        tk.Label(self, text="SHATTA VODOU", font=("Courier", 45, "bold"), bg="#0B0C10", fg="#D4AF37").pack(pady=(100, 10))
-        tk.Label(self, text="ÉDITION LE DÉ DU DESTIN", font=("Helvetica", 16, "italic"), bg="#0B0C10", fg="#66FCF1").pack(pady=(0, 60))
+        buttons = [
+            ("LANCER LE RITUEL", "#D4AF37", "#0B0C10", lambda: controller.show_frame("JeuShatta")),
+            ("PARAMÈTRES", "#1F2833", "#C5C6C7", lambda: controller.show_frame("Parametres")),
+            ("QUITTER", "#E74C3C", "white", controller.quit)
+        ]
 
-        # Boutons de navigation
-        btn_jouer = tk.Button(self, text="LANCER LE RITUEL", font=("Helvetica", 18, "bold"), bg="#D4AF37", fg="#0B0C10", 
-                              width=20, height=2, cursor="hand2", command=lambda: controller.show_frame("JeuShatta"))
-        btn_jouer.pack(pady=15)
-
-        btn_param = tk.Button(self, text="PARAMÈTRES", font=("Helvetica", 14), bg="#1F2833", fg="#C5C6C7", 
-                              width=20, cursor="hand2", command=lambda: controller.show_frame("Parametres"))
-        btn_param.pack(pady=10)
-
-        btn_quitter = tk.Button(self, text="QUITTER", font=("Helvetica", 14), bg="#E74C3C", fg="white", 
-                                width=20, cursor="hand2", command=controller.quit)
-        btn_quitter.pack(pady=10)
+        for text, bg, fg, cmd in buttons:
+            tk.Button(self, text=text, font=("Helvetica", 14, "bold"), bg=bg, fg=fg, width=20, height=2, cursor="hand2", command=cmd).pack(pady=10)
 
 # --- ÉCRAN 2 : PARAMÈTRES ---
 class Parametres(tk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent, bg="#0B0C10")
-        self.controller = controller
-
-        tk.Label(self, text="⚙️ PARAMÈTRES", font=("Courier", 30, "bold"), bg="#0B0C10", fg="#D4AF37").pack(pady=(80, 50))
-
-        # Checkboxes liées aux variables globales de l'app
-        tk.Checkbutton(self, text="Activer le Son (Mockup)", variable=controller.son_active, font=("Helvetica", 14), 
-                       bg="#0B0C10", fg="#C5C6C7", selectcolor="#1F2833", cursor="hand2").pack(pady=10)
+        tk.Label(self, text="⚙️ CONFIGURATION", font=("Courier", 25, "bold"), bg="#0B0C10", fg="#D4AF37").pack(pady=50)
         
-        tk.Checkbutton(self, text="Animations Rapides", variable=controller.animations_rapides, font=("Helvetica", 14), 
-                       bg="#0B0C10", fg="#C5C6C7", selectcolor="#1F2833", cursor="hand2").pack(pady=10)
+        opts = [("Activer les sons", controller.son_active), ("Animations Turbo", controller.animations_rapides)]
+        for text, var in opts:
+            tk.Checkbutton(self, text=text, variable=var, font=("Helvetica", 14), bg="#0B0C10", fg="#C5C6C7", selectcolor="#1F2833", activebackground="#0B0C10").pack(pady=10)
 
-        btn_retour = tk.Button(self, text="RETOUR AU MENU", font=("Helvetica", 14, "bold"), bg="#1F2833", fg="#C5C6C7", 
-                               width=20, cursor="hand2", command=lambda: controller.show_frame("MenuPrincipal"))
-        btn_retour.pack(pady=60)
+        tk.Button(self, text="RETOUR", font=("Helvetica", 12, "bold"), bg="#1F2833", fg="#C5C6C7", command=lambda: controller.show_frame("MenuPrincipal")).pack(pady=50)
 
-# --- ÉCRAN 3 : LE JEU EN LUI-MÊME ---
+# --- ÉCRAN 3 : LE JEU (FUSIONNÉ) ---
 class JeuShatta(tk.Frame):
     def __init__(self, parent, controller):
-        super().__init__(parent, bg="#2F2E22")
+        super().__init__(parent, bg="#1A1A1A")
         self.controller = controller
-        
-        # Variables de Jeu
-        self.valeurs = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'V', 'D', 'R', 'As']
-        self.couleurs = ['♥', '♦', '♣', '♠']
-        self.paquet = []
-        self.carte_cible = None
-        self.echecs_consecutifs = 0
-        self.en_defilement = False
-        self.phase_choix = True 
-
+        self.particules = []
+        self.symboles = ["🍒", "🔔", "🍋", "🍉", "⭐"]
         self.setup_ui()
-
-    def on_show(self):
-        """Fonction appelée à chaque fois qu'on affiche cet écran"""
-        self.reset_jeu()
+        self.update_particules()
 
     def setup_ui(self):
-        tk.Label(self, text="SHATTA VODOU", font=("Courier", 24, "bold"), bg="#2F2E22", fg="#D4AF37").pack(pady=(20, 5))
+        # Header Stats
+        stats_frame = tk.Frame(self, bg="#1A1A1A")
+        stats_frame.pack(fill="x", pady=10)
+        self.label_points = tk.Label(stats_frame, text="Points : 0", font=("Helvetica", 14, "bold"), bg="#1A1A1A", fg="#E74C3C")
+        self.label_points.pack(side="left", padx=20)
+        self.label_paquet = tk.Label(stats_frame, text="Cartes : 52", font=("Helvetica", 12), bg="#1A1A1A", fg="#66FCF1")
+        self.label_paquet.pack(side="right", padx=20)
 
-        self.frame_de = tk.Frame(self, bg="#1F2833", bd=2, relief="ridge")
-        self.frame_de.pack(pady=10, padx=50, fill="x")
+        # Zone Dé
+        self.label_de_valeur = tk.Label(self, text="🎲 --", font=("Helvetica", 30, "bold"), bg="#1A1A1A", fg="#D4AF37")
+        self.label_de_valeur.pack()
 
-        self.label_de_container = tk.Label(self.frame_de, text="JEU DE CARTE", font=("Helvetica", 10, "bold"), bg="#1F2833", fg="#C5C6C7")
-        self.label_de_container.pack(pady=(10, 0))
-        
-        self.label_de_valeur = tk.Label(self.frame_de, text="--", font=("Helvetica", 36, "bold"), bg="#1F2833", fg="#45A29E")
-        self.label_de_valeur.pack(pady=(0, 10))
+        # Canvas Carte (pour particules)
+        self.canvas = tk.Canvas(self, width=200, height=280, bg="#FFFFFF", highlightthickness=3, highlightbackground="#D4AF37")
+        self.canvas.pack(pady=20)
+        self.card_text = self.canvas.create_text(100, 140, text="?", font=("Helvetica", 60, "bold"), fill="#1A1A1A")
 
-        self.card_frame = tk.Frame(self, width=200, height=280, bg="#FFFFFF", highlightbackground="#D4AF37", highlightthickness=4)
-        self.card_frame.pack_propagate(False)
-        self.card_frame.pack(pady=20)
-
-        self.label_carte = tk.Label(self.card_frame, text="?", font=("Helvetica", 65, "bold"), bg="#FFFFFF")
-        self.label_carte.place(relx=0.5, rely=0.5, anchor="center")
-
-        self.label_status = tk.Label(self, text="C'est le moment de choisir ton SHATTA VODOU.", font=("Helvetica", 14), bg="#2F2E22", fg="#FFFFFF")
+        # Status & Bouton
+        self.label_status = tk.Label(self, text="Invoquez votre Shatta Vodou...", font=("Helvetica", 12), bg="#1A1A1A", fg="#C5C6C7")
         self.label_status.pack(pady=10)
 
-        self.label_stats = tk.Label(self, text="", font=("Helvetica", 11), bg="#2F2E22", fg="#C5C6C7")
-        self.label_stats.pack()
+        self.btn_action = tk.Button(self, text="LANCER LE DÉ", font=("Helvetica", 16, "bold"), bg="#D4AF37", width=15, height=2, command=self.toggle_defilement)
+        self.btn_action.pack(pady=10)
 
-        self.btn_action = tk.Button(self, text="PIOCHE UNE CARTE", font=("Helvetica", 16, "bold"), bg="#D4AF37", fg="#0B0C10", 
-                                    activebackground="#F3E5AB", width=18, height=2, cursor="hand2", command=self.toggle_defilement)
-        self.btn_action.pack(pady=20)
-        
-        # Bouton d'abandon (optionnel)
-        tk.Button(self, text="Abandonner", font=("Helvetica", 10), bg="#E74C3C", fg="white", cursor="hand2", 
-                  command=lambda: self.controller.show_frame("MenuPrincipal")).pack()
+        # Casino Display
+        self.label_roulette = tk.Label(self, text="[ 🎰 | 🎰 | 🎰 ]", font=("Segoe UI Symbol", 20), bg="#000", fg="#D4AF37")
+        self.label_roulette.pack(pady=20, fill="x")
+
+    def on_show(self):
+        self.reset_jeu()
+
+    def reset_jeu(self):
+        self.paquet = [f"{v}{c}" for v in ['2','3','4','5','6','7','8','9','10','V','D','R','As'] for c in ['♥','♦','♣','♠']]
+        self.carte_cible, self.phase_choix, self.echecs, self.points, self.en_defilement = None, True, 0, 0, False
+        self.update_ui_state()
+
+    def update_ui_state(self):
+        self.label_points.config(text=f"Points : {self.points}")
+        self.label_paquet.config(text=f"Cartes : {len(self.paquet)}")
+        self.canvas.itemconfig(self.card_text, text="?")
+        self.btn_action.config(text="LANCER LE DÉ", bg="#D4AF37")
 
     def toggle_defilement(self):
         if not self.en_defilement:
+            if not self.phase_choix and len(self.paquet) == 1:
+                self.verifier_victoire(self.canvas.itemcget(self.card_text, "text"))
+                return
             self.en_defilement = True
-            self.btn_action.config(text="STOP", bg="#E74C3C", fg="white", activebackground="#C0392B")
+            self.btn_action.config(text="STOP", bg="#E74C3C", fg="white")
             self.animer()
         else:
             self.en_defilement = False
-            self.btn_action.config(text="START" if not self.phase_choix else "MÉLANGER LE PAQUET", bg="#D4AF37", fg="#0B0C10")
+            self.btn_action.config(text="START" if not self.phase_choix else "SUIVANT", bg="#D4AF37", fg="black")
             self.logique_jeu()
 
     def animer(self):
         if self.en_defilement:
-            index_de = random.randint(1, len(self.paquet))
-            carte_actuelle = self.paquet[index_de - 1]
-
-            self.label_de_valeur.config(text=f"🎲 {index_de}")
-            couleur_symbole = "#E74C3C" if any(x in carte_actuelle for x in ['♥', '♦']) else "#0B0C10"
-            self.label_carte.config(text=carte_actuelle, fg=couleur_symbole)
+            self.controller.play_fx("roulette")
+            idx = random.randint(1, len(self.paquet))
+            carte = self.paquet[idx-1]
+            color = "#E74C3C" if any(x in carte for x in ['♥', '♦']) else "#1A1A1A"
+            self.canvas.itemconfig(self.card_text, text=carte, fill=color)
+            self.label_de_valeur.config(text=f"🎲 {idx}")
             
-            # Ajustement vitesse selon les paramètres
-            vitesse = 20 if self.controller.animations_rapides.get() else 50
-            self.after(vitesse, self.animer)
+            s = random.choices(self.symboles, k=3)
+            self.label_roulette.config(text=f"[ {s[0]} | {s[1]} | {s[2]} ]")
+            
+            ms = 25 if self.controller.animations_rapides.get() else 60
+            self.after(ms, self.animer)
 
     def logique_jeu(self):
-        carte_tiree = self.label_carte.cget("text")
-
+        carte_tiree = self.canvas.itemcget(self.card_text, "text")
         if self.phase_choix:
             self.carte_cible = carte_tiree
-            messagebox.showinfo("🔮 Le Sort est jeté", f"Ta carte a été piochée, ton shatta vodou est : \n{self.carte_cible}")
+            self.creer_explosion("#D4AF37")
+            messagebox.showinfo("🔮 Rituel", f"Le dé a parlé. Votre Shatta Vodou est :\n{self.carte_cible}")
             self.phase_choix = False
-            self.label_status.config(text="Le paquet défile... Traque ton Shatta Vodou !", fg="#66FCF1")
-            self.label_de_container.config(text="DERNIER TIRAGE")
+            self.label_status.config(text="Traquez votre cible !")
             random.shuffle(self.paquet)
         else:
-            if carte_tiree == self.carte_cible:
-                # VICTOIRE : On bascule sur l'écran de fin
-                self.controller.show_frame("EcranFin", victoire=True, carte=self.carte_cible)
-            else:
-                self.echecs_consecutifs += 1
-                if self.echecs_consecutifs == 2:
-                    self.diviser_paquet(carte_tiree)
-                    self.echecs_consecutifs = 0
-                else:
-                    self.label_status.config(text=f"Échec... le {self.carte_cible} t'échappe encore.", fg="#E74C3C")
-                
-                # DÉFAITE : Si c'est la dernière carte et ce n'est pas la bonne
-                if len(self.paquet) <= 1 and carte_tiree != self.carte_cible:
-                    self.controller.show_frame("EcranFin", victoire=False, carte=self.carte_cible)
+            self.verifier_victoire(carte_tiree)
 
-        self.label_stats.config(text=f"Cartes dans le paquet : {len(self.paquet)}")
+    def verifier_victoire(self, carte_tiree):
+        if carte_tiree == self.carte_cible:
+            self.creer_explosion("#66FCF1")
+            self.controller.play_fx("victoire")
+            self.controller.show_frame("EcranFin", victoire=True, carte=self.carte_cible, points=self.points)
+        else:
+            self.controller.play_fx("erreur")
+            self.echecs += 1
+            self.points += 1
+            if self.echecs == 2:
+                self.diviser_paquet()
+                self.echecs = 0
+            
+            if len(self.paquet) <= 1 and carte_tiree != self.carte_cible:
+                self.controller.show_frame("EcranFin", victoire=False, carte=self.carte_cible, points=self.points)
+        
+        self.label_points.config(text=f"Points : {self.points}")
+        self.label_paquet.config(text=f"Cartes : {len(self.paquet)}")
 
-    def diviser_paquet(self, carte_perdue):
-        messagebox.showwarning("⚠️ Malédiction : Paire de deux", f"{carte_perdue} n'est pas ta cible.\nPaire de deux : Le paquet se divise !")
-        if self.carte_cible in self.paquet:
-            self.paquet.remove(self.carte_cible)
-        taille_reduite = max(1, len(self.paquet) // 2) # S'assure qu'on ne descend pas sous 1
-        self.paquet = random.sample(self.paquet, taille_reduite)
+    def diviser_paquet(self):
+        self.controller.play_fx("division")
+        messagebox.showwarning("⚠️ Malédiction", "Paire de deux ! Le paquet se divise par deux.")
+        if self.carte_cible in self.paquet: self.paquet.remove(self.carte_cible)
+        self.paquet = random.sample(self.paquet, max(1, len(self.paquet)//2))
         self.paquet.append(self.carte_cible)
         random.shuffle(self.paquet)
-        self.label_status.config(text="Le paquet s'est réduit... tes chances augmentent.", fg="#D4AF37")
 
-    def reset_jeu(self):
-        self.paquet = [f"{v}{c}" for v in self.valeurs for c in self.couleurs]
-        self.carte_cible = None
-        self.phase_choix = True
-        self.echecs_consecutifs = 0
-        self.en_defilement = False
-        self.label_carte.config(text="?", fg="#0B0C10")
-        self.label_de_valeur.config(text="--", fg="#45A29E")
-        self.btn_action.config(text="PIOCHE UNE CARTE", bg="#D4AF37")
-        self.label_status.config(text="C'est le moment de choisir ton SHATTA VODOU.", fg="#FFFFFF")
-        self.label_de_container.config(text="JEU DE CARTE")
-        self.label_stats.config(text=f"Cartes dans le paquet : {len(self.paquet)} / 52")
+    # --- Particules ---
+    def creer_explosion(self, color):
+        for _ in range(15):
+            p = {
+                "id": self.canvas.create_oval(95, 135, 105, 145, fill=color, outline=""),
+                "vx": random.uniform(-5, 5), "vy": random.uniform(-5, 5), "vie": 20
+            }
+            self.particules.append(p)
 
-# --- ÉCRAN 4 : FIN DE PARTIE (VICTOIRE / DÉFAITE) ---
+    def update_particules(self):
+        for p in self.particules[:]:
+            self.canvas.move(p["id"], p["vx"], p["vy"])
+            p["vie"] -= 1
+            if p["vie"] <= 0:
+                self.canvas.delete(p["id"])
+                self.particules.remove(p)
+        self.after(30, self.update_particules)
+
+# --- ÉCRAN 4 : FIN ---
 class EcranFin(tk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent, bg="#0B0C10")
         self.controller = controller
+        self.label_titre = tk.Label(self, text="", font=("Courier", 35, "bold"), bg="#0B0C10")
+        self.label_titre.pack(pady=100)
+        self.label_msg = tk.Label(self, text="", font=("Helvetica", 14), bg="#0B0C10", fg="#C5C6C7")
+        self.label_msg.pack(pady=20)
+        
+        tk.Button(self, text="REJOUER", font=("Helvetica", 14, "bold"), bg="#D4AF37", command=lambda: controller.show_frame("JeuShatta")).pack(pady=10)
+        tk.Button(self, text="MENU", font=("Helvetica", 12), bg="#1F2833", fg="#C5C6C7", command=lambda: controller.show_frame("MenuPrincipal")).pack(pady=5)
 
-        self.label_titre = tk.Label(self, text="", font=("Courier", 40, "bold"), bg="#0B0C10")
-        self.label_titre.pack(pady=(120, 20))
-
-        self.label_message = tk.Label(self, text="", font=("Helvetica", 18), bg="#0B0C10", fg="#C5C6C7")
-        self.label_message.pack(pady=20)
-
-        self.label_carte = tk.Label(self, text="", font=("Helvetica", 50, "bold"), bg="#0B0C10", fg="#D4AF37")
-        self.label_carte.pack(pady=20)
-
-        btn_rejouer = tk.Button(self, text="REJOUER", font=("Helvetica", 16, "bold"), bg="#D4AF37", fg="#0B0C10", 
-                                width=15, cursor="hand2", command=lambda: controller.show_frame("JeuShatta"))
-        btn_rejouer.pack(pady=15)
-
-        btn_menu = tk.Button(self, text="MENU PRINCIPAL", font=("Helvetica", 14), bg="#1F2833", fg="#C5C6C7", 
-                             width=20, cursor="hand2", command=lambda: controller.show_frame("MenuPrincipal"))
-        btn_menu.pack(pady=10)
-
-    def on_show(self, victoire=True, carte=""):
-        """Met à jour l'affichage selon si le joueur a gagné ou perdu"""
-        self.label_carte.config(text=carte)
+    def on_show(self, victoire=True, carte="", points=0):
         if victoire:
             self.label_titre.config(text="👑 VICTOIRE 👑", fg="#D4AF37")
-            self.label_message.config(text="Le sort est brisé ! Tu as trouvé ton SHATTA VODOU.")
+            self.label_msg.config(text=f"Vous avez capturé le {carte} !\nScore de Malchance : {points}")
         else:
             self.label_titre.config(text="💀 DÉFAITE 💀", fg="#E74C3C")
-            self.label_message.config(text="Les esprits t'ont trompé... La carte t'a échappé.")
+            self.label_msg.config(text=f"Le {carte} vous a échappé dans les ténèbres...")
 
-# --- LANCEMENT ---
 if __name__ == "__main__":
     app = Application()
     app.mainloop()
