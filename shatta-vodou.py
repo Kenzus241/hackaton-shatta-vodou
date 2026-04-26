@@ -6,13 +6,11 @@ class ShattaVodouApp:
     def __init__(self, root):
         self.root = root
         self.root.title("🃏 Shatta Vodou : Le Dé du Destin")
-        self.root.geometry("500x650")
+        self.root.geometry("500x700")
         self.root.configure(bg="#1a1a1a")
 
-        # --- Variables de Jeu ---
         self.valeurs = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'V', 'D', 'R', 'As']
         self.couleurs = ['♥', '♦', '♣', '♠']
-        # Création du paquet indexé (1 à 52)
         self.paquet = [f"{v}{c}" for v in self.valeurs for c in self.couleurs]
         
         self.carte_cible = None
@@ -21,6 +19,9 @@ class ShattaVodouApp:
         self.en_defilement = False
         self.phase_choix = True 
 
+        self.points = 0
+        self.nb_divisions = 0
+
         self.setup_ui()
 
     def setup_ui(self):
@@ -28,7 +29,10 @@ class ShattaVodouApp:
         tk.Label(self.root, text="SHATTA VODOU", font=("Courier", 28, "bold"), 
                  bg="#1a1a1a", fg="#d4af37").pack(pady=10)
 
-        # Affichage du Dé
+        self.label_points = tk.Label(self.root, text=f"Points : {self.points}", font=("Helvetica", 14, "bold"), 
+                                     bg="#1a1a1a", fg="#e74c3c")
+        self.label_points.pack()
+
         self.label_de_container = tk.Label(self.root, text="DÉ À 52 FACES", font=("Helvetica", 10), bg="#1a1a1a", fg="#888")
         self.label_de_container.pack()
         
@@ -36,7 +40,6 @@ class ShattaVodouApp:
                                         bg="#1a1a1a", fg="#e74c3c")
         self.label_de_valeur.pack(pady=5)
 
-        # Zone de la Carte
         self.card_frame = tk.Frame(self.root, width=180, height=250, bg="#fff", 
                                    highlightbackground="#d4af37", highlightthickness=3)
         self.card_frame.pack_propagate(False)
@@ -45,7 +48,6 @@ class ShattaVodouApp:
         self.label_carte = tk.Label(self.card_frame, text="?", font=("Helvetica", 50), bg="#fff")
         self.label_carte.place(relx=0.5, rely=0.5, anchor="center")
 
-        # Status
         self.label_status = tk.Label(self.root, text="Lance le dé pour choisir ta carte", 
                                      font=("Helvetica", 12), bg="#1a1a1a", fg="#eee")
         self.label_status.pack(pady=10)
@@ -54,13 +56,17 @@ class ShattaVodouApp:
                                      font=("Helvetica", 10), bg="#1a1a1a", fg="#666")
         self.label_stats.pack()
 
-        # Bouton Action
         self.btn_action = tk.Button(self.root, text="LANCER LE DÉ", font=("Helvetica", 14, "bold"), 
                                     bg="#d4af37", fg="black", width=15, height=2, command=self.toggle_defilement)
         self.btn_action.pack(pady=20)
 
     def toggle_defilement(self):
         if not self.en_defilement:
+            if not self.phase_choix and len(self.paquet) == 1 and self.label_carte.cget("text") != self.carte_cible:
+                messagebox.showerror("PERDU", "Dernière carte... ce n'est pas le shatta voudou, tu as perdu !")
+                self.reset_jeu()
+                return
+
             self.en_defilement = True
             self.btn_action.config(text="STOP", bg="#e74c3c", fg="white")
             self.animer()
@@ -70,24 +76,18 @@ class ShattaVodouApp:
             self.logique_jeu()
 
     def animer(self):
-        """Anime le dé et les cartes en même temps."""
         if self.en_defilement:
-            # On tire un index au hasard (le dé)
             self.dernier_de = random.randint(1, len(self.paquet))
             carte_actuelle = self.paquet[self.dernier_de - 1]
-
-            # Mise à jour UI
             self.label_de_valeur.config(text=f"🎲 {self.dernier_de}")
             couleur_symbole = "#e74c3c" if any(x in carte_actuelle for x in ['♥', '♦']) else "#1a1a1a"
             self.label_carte.config(text=carte_actuelle, fg=couleur_symbole)
-            
             self.root.after(60, self.animer)
 
     def logique_jeu(self):
         carte_tiree = self.label_carte.cget("text")
 
         if self.phase_choix:
-            # Fin de phase 1 : Le dé a parlé
             self.carte_cible = carte_tiree
             messagebox.showinfo("Le Sort est jeté", f"Le dé 52 est tombé sur {self.dernier_de} !\n\nTa carte est : {self.carte_cible}")
             self.phase_choix = False
@@ -95,11 +95,14 @@ class ShattaVodouApp:
             self.label_de_container.config(text="VALEUR DU DERNIER TIRAGE")
             random.shuffle(self.paquet)
         else:
-            # Phase 2 : Recherche
             if carte_tiree == self.carte_cible:
-                messagebox.showinfo("SHATTA VODOU", f"✨ {carte_tiree} ✨\nC'est ton Shatta Vodou ! Tu as gagné.")
+                messagebox.showinfo("SHATTA VODOU", f"✨ {carte_tiree} ✨\nC'est ton Shatta Vodou ! Tu as gagné.\nScore final : {self.points}")
                 self.reset_jeu()
             else:
+                valeur_point = 2 if self.nb_divisions >= 2 else 1
+                self.points += valeur_point
+                self.label_points.config(text=f"Points : {self.points}")
+
                 self.echecs_consecutifs += 1
                 if self.echecs_consecutifs == 2:
                     self.diviser_paquet(carte_tiree)
@@ -110,7 +113,7 @@ class ShattaVodouApp:
         self.label_stats.config(text=f"Cartes restantes : {len(self.paquet)}")
 
     def diviser_paquet(self, carte_perdue):
-        """Applique la règle : Paire de deux, on divise par deux."""
+        self.nb_divisions += 1
         messagebox.showwarning("Paire de deux", f"{carte_perdue} n'est pas ton Shatta...\nPaire de deux, on divise par deux !")
         
         if self.carte_cible in self.paquet:
@@ -127,10 +130,14 @@ class ShattaVodouApp:
         self.carte_cible = None
         self.phase_choix = True
         self.echecs_consecutifs = 0
+        self.points = 0
+        self.nb_divisions = 0
+        self.label_points.config(text="Points : 0")
         self.label_carte.config(text="?", fg="#1a1a1a")
         self.label_de_valeur.config(text="--")
         self.btn_action.config(text="LANCER LE DÉ")
         self.label_status.config(text="Relance le dé pour une nouvelle partie")
+        self.label_stats.config(text=f"Cartes restantes : {len(self.paquet)}")
 
 if __name__ == "__main__":
     root = tk.Tk()
