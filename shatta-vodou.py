@@ -1,76 +1,127 @@
+import tkinter as tk
+from tkinter import messagebox
 import random
 
-def creer_paquet():
-    '''
-    crée le jeu de carte
-    '''
-    valeurs = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'Valet', 'Dame', 'Roi', 'As']
-    couleurs = ['Cœur', 'Carreau', 'Trèfle', 'Pique']
-    return [f"{v} de {c}" for v in valeurs for c in couleurs]
+class ShattaVodouApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("🃏 Shatta Vodou")
+        self.root.geometry("500x600")
+        self.root.configure(bg="#2c3e50")
 
-def jouer_shatta_vodou():
-    '''
-    fonction principal du jeu
-    '''
-    print("🃏 === BIENVENUE DANS LE SHATTA VODOU === 🃏\n")
-    
-    # Initialisation
-    paquet = creer_paquet()
-    random.shuffle(paquet)
-    
-    # --- PHASE 1 : Choix de la carte ---
-    print("Le maître du jeu fait défiler les cartes...")
-    input("👉 Appuie sur 'Entrée' pour dire STOP et choisir ta carte !")
-    
-    # Tirage aléatoire simulant le moment où le joueur dit stop
-    carte_cible = random.choice(paquet)
-    print(f"\nTu as dit STOP sur : ** {carte_cible} **")
-    print("Cette carte devient la tienne. Elle est remise dans le paquet et le jeu est mélangé.\n")
-    
-    # --- PHASE 2 : Retrouver la carte ---
-    echecs_consecutifs = 0
-    
-    while True:
-        print("-" * 40)
-        print(f"[Taille actuelle du paquet : {len(paquet)} cartes]")
-        input("👉 Le paquet défile... Appuie sur 'Entrée' pour dire STOP !")
+        # --- Variables de Jeu ---
+        self.valeurs = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'V', 'D', 'R', 'As']
+        self.couleurs = ['♥', '♦', '♣', '♠']
+        self.paquet = [f"{v}{c}" for v in self.valeurs for c in self.couleurs]
         
-        carte_tiree = random.choice(paquet)
-        
-        # Condition de victoire
-        if carte_tiree == carte_cible:
-            print(f"\n🎉 {carte_tiree} est ton shatta vodou ! 🎉")
-            print("Bien joué, la partie est terminée.")
-            break
-            
-        # Mauvaise carte
+        self.carte_cible = None
+        self.echecs_consecutifs = 0
+        self.en_defilement = False
+        self.phase_choix = True
+
+        self.setup_ui()
+
+    def setup_ui(self):
+        """Initialisation de l'interface graphique."""
+        # Titre
+        self.label_titre = tk.Label(self.root, text="SHATTA VODOU", font=("Helvetica", 24, "bold"), 
+                                    bg="#2c3e50", fg="#ecf0f1", pady=20)
+        self.label_titre.pack()
+
+        # Zone d'affichage de la carte
+        self.card_frame = tk.Frame(self.root, width=200, height=280, bg="#ecf0f1", 
+                                   highlightbackground="#e74c3c", highlightthickness=4)
+        self.card_frame.pack_propagate(False)
+        self.card_frame.pack(pady=30)
+
+        self.label_carte = tk.Label(self.card_frame, text="?", font=("Helvetica", 60), 
+                                    bg="#ecf0f1", fg="#2c3e50")
+        self.label_carte.place(relx=0.5, rely=0.5, anchor="center")
+
+        # Infos et Status
+        self.label_status = tk.Label(self.root, text="Appuie sur START pour faire défiler", 
+                                     font=("Helvetica", 12), bg="#2c3e50", fg="#bdc3c7")
+        self.label_status.pack(pady=10)
+
+        self.label_stats = tk.Label(self.root, text=f"Cartes dans le paquet : {len(self.paquet)}", 
+                                     font=("Helvetica", 10, "italic"), bg="#2c3e50", fg="#95a5a6")
+        self.label_stats.pack()
+
+        # Boutons
+        self.btn_action = tk.Button(self.root, text="START", font=("Helvetica", 14, "bold"), 
+                                    bg="#27ae60", fg="white", width=15, height=2, command=self.toggle_defilement)
+        self.btn_action.pack(pady=20)
+
+    def toggle_defilement(self):
+        """Gère l'alternance entre le défilement et l'arrêt."""
+        if not self.en_defilement:
+            self.en_defilement = True
+            self.btn_action.config(text="STOP", bg="#e74c3c")
+            self.label_status.config(text="Défilement en cours...")
+            self.animer_defilement()
         else:
-            echecs_consecutifs += 1
-            
-            # Si 2 échecs d'affilée
-            if echecs_consecutifs == 2:
-                print(f"\n❌ {carte_tiree} n'est pas ton shatta vodou...")
-                print("⚠️  Paire de deux, on divise par deux !")
-                
-                # On divise le paquet par deux
-                # Étape 1 : On met la carte cible en sécurité pour ne pas la perdre
-                paquet.remove(carte_cible)
-                
-                # Étape 2 : On réduit la taille du paquet de moitié
-                moitie = len(paquet) // 2
-                paquet = random.sample(paquet, moitie)
-                
-                # Étape 3 : On remet la carte cible et on mélange
-                paquet.append(carte_cible)
-                random.shuffle(paquet)
-                
-                # On réinitialise le compteur d'échecs après la division
-                echecs_consecutifs = 0
-                
-            # Si 1 seul échec
-            else:
-                print(f"\n❌ {carte_tiree} n'est pas ton shatta vodou.")
+            self.en_defilement = False
+            self.btn_action.config(text="START", bg="#27ae60")
+            self.verifier_carte()
 
-# Lancement du jeu
+    def animer_defilement(self):
+        """Simule visuellement le mélange des cartes."""
+        if self.en_defilement:
+            carte_hasard = random.choice(self.paquet)
+            couleur_texte = "#e74c3c" if any(x in carte_hasard for x in ['♥', '♦']) else "#2c3e50"
+            self.label_carte.config(text=carte_hasard, fg=couleur_texte)
+            self.root.after(50, self.animer_defilement)
+
+    def verifier_carte(self):
+        """Logique principale du jeu lors de l'appui sur STOP."""
+        carte_tirée = self.label_carte.cget("text")
+
+        # --- PHASE 1 : Choix de la carte ---
+        if self.phase_choix:
+            self.carte_cible = carte_tirée
+            messagebox.showinfo("Ta Carte", f"Ta carte est le {self.carte_cible} !\nRetrouve-la maintenant.")
+            self.phase_choix = False
+            self.label_status.config(text="Retrouve ton Shatta Vodou !")
+            # On mélange bien
+            random.shuffle(self.paquet)
+
+        # --- PHASE 2 : Recherche ---
+        else:
+            if carte_tirée == self.carte_cible:
+                messagebox.showinfo("VICTOIRE", f"🎉 {carte_tirée} est ton shatta vodou !")
+                self.reset_jeu()
+            else:
+                self.echecs_consecutifs += 1
+                if self.echecs_consecutifs == 2:
+                    messagebox.showwarning("Paire de deux", f"{carte_tirée} n'est pas ton shatta vodou.\nPaire de deux, on divise par deux !")
+                    self.diviser_paquet()
+                    self.echecs_consecutifs = 0
+                else:
+                    self.label_status.config(text=f"Raté ! Ce n'est pas le {self.carte_cible}...")
+
+        self.label_stats.config(text=f"Cartes dans le paquet : {len(self.paquet)}")
+
+    def diviser_paquet(self):
+        """Réduit le paquet de moitié en gardant la cible."""
+        if self.carte_cible in self.paquet:
+            self.paquet.remove(self.carte_cible)
+        
+        nouveau_taille = len(self.paquet) // 2
+        self.paquet = random.sample(self.paquet, nouveau_taille)
+        self.paquet.append(self.carte_cible)
+        random.shuffle(self.paquet)
+
+    def reset_jeu(self):
+        """Remet le jeu à zéro."""
+        self.paquet = [f"{v}{c}" for v in self.valeurs for c in self.couleurs]
+        self.carte_cible = None
+        self.echecs_consecutifs = 0
+        self.phase_choix = True
+        self.label_carte.config(text="?", fg="#2c3e50")
+        self.label_status.config(text="Appuie sur START pour choisir une carte")
+        self.label_stats.config(text=f"Cartes dans le paquet : {len(self.paquet)}")
+
 if __name__ == "__main__":
-    jouer_shatta_vodou()
+    root = tk.Tk()
+    app = ShattaVodouApp(root)
+    root.mainloop()
