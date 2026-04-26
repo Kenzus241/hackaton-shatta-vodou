@@ -35,4 +35,4 @@ Le projet nécessite **Python 3** et la bibliothèque **Tkinter**.
 #### Sur Linux (Ubuntu/Debian/Kali) :
 Tkinter n'est pas toujours installé par défaut. Exécutez la commande suivante :
 ```bash
-sudo apt update && sudo apt install python3-tk && sudo apt install python3-pygame
+sudo apt update && sudo apt install python3-tk && sudo apt install python3-pygame && sudo apt install python3-pil
